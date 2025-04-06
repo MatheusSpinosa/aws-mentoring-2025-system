@@ -1,91 +1,36 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router } from "express";
 
-import { AWSCognitoProvider } from "@shared/container/providers/aws-cognito/implementations/AWSCognitoProvider";
+import { ConfirmCustomerSendCodeUseController } from "@modules/customer/confirm-customer-send-code/ConfirmCustomerSendCodeUseController";
+import { ConfirmCustomerUseController } from "@modules/customer/confirm-customer/ConfirmCustomerUseController";
+import { CreateCustomerUseController } from "@modules/customer/create-customer/CreateCustomerUseController";
+import { CustomerLoginUseController } from "@modules/customer/customer-login/CustomerLoginUseController";
+import { ForgotPasswordUseController } from "@modules/customer/forgot-password/ForgotPasswordUseController";
+import { ResetPasswordUseController } from "@modules/customer/reset-password/ResetPasswordUseController";
 
 const customerRoutes = Router();
 
-customerRoutes.post("/create", async (req, res) => {
-  const { username, password, email } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
+const createCustomerUseController = new CreateCustomerUseController();
+const confirmCustomerUseController = new ConfirmCustomerUseController();
+const confirmCustomerSendCodeUseController =
+  new ConfirmCustomerSendCodeUseController();
+const customerLoginUseController = new CustomerLoginUseController();
+const forgotPasswordUseController = new ForgotPasswordUseController();
+const resetPasswordUseController = new ResetPasswordUseController();
 
-  try {
-    const result = await awsCognitoProvider.signUp(username, password, email);
-    res.status(201).json(result);
-  } catch (error: any) {
-    res.status(400).send(`Erro ao criar usuário: ${error?.message}`);
-  }
-});
+customerRoutes.post("/create", createCustomerUseController.handle);
 
-customerRoutes.post("/confirm", async (req, res) => {
-  const { username, confirmationCode } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
+customerRoutes.post("/confirm", confirmCustomerUseController.handle);
 
-  try {
-    const result = await awsCognitoProvider.confirmSignUp(
-      username,
-      confirmationCode,
-    );
-    res.status(200).json(result);
-  } catch (error: any) {
-    res.status(400).send(`Erro ao confirmar usuário: ${error?.message}`);
-  }
-});
+customerRoutes.post(
+  "/resend-confirmation-code",
+  confirmCustomerSendCodeUseController.handle,
+);
 
-customerRoutes.post("/resend-confirmation-code", async (req, res) => {
-  const { username } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
+customerRoutes.post("/login", customerLoginUseController.handle);
 
-  try {
-    const result = await awsCognitoProvider.resendConfirmationCode(username);
-    res.status(200).json(result);
-  } catch (error: any) {
-    res
-      .status(400)
-      .send(`Erro ao reenviar código de confirmação: ${error?.message}`);
-  }
-});
+customerRoutes.post("/forgot-password", forgotPasswordUseController.handle);
 
-customerRoutes.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
-
-  try {
-    const authResult = await awsCognitoProvider.signIn(username, password);
-    res.status(200).json(authResult);
-  } catch (error: any) {
-    res.status(401).send(`Erro ao autenticar usuário: ${error?.message}`);
-  }
-});
-
-customerRoutes.post("/forgot-password", async (req, res) => {
-  const { username } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
-
-  try {
-    await awsCognitoProvider.forgotPassword(username);
-    res.status(200).send("Código de redefinição de senha enviado com sucesso.");
-  } catch (error: any) {
-    res
-      .status(400)
-      .send(`Erro ao solicitar redefinição de senha: ${error?.message}`);
-  }
-});
-
-customerRoutes.post("/reset-password", async (req, res) => {
-  const { username, confirmationCode, newPassword } = req.body;
-  const awsCognitoProvider = AWSCognitoProvider.getInstance();
-
-  try {
-    await awsCognitoProvider.confirmForgotPassword(
-      username,
-      confirmationCode,
-      newPassword,
-    );
-    res.status(200).send("Senha redefinida com sucesso.");
-  } catch (error: any) {
-    res.status(400).send(`Erro ao redefinir senha: ${error?.message}`);
-  }
-});
+customerRoutes.post("/reset-password", resetPasswordUseController.handle);
 
 export { customerRoutes };

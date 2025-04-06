@@ -19,9 +19,11 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { generateSecretHash } from "@shared/container/functions/GenerateSecretHash";
 
+import type { IAWSCognitoProvider } from "../IAWSCognitoProvider";
+
 dotenv.config();
 
-export class AWSCognitoProvider {
+export class AWSCognitoProvider implements IAWSCognitoProvider {
   private static instance: AWSCognitoProvider;
   private cognitoClient: CognitoIdentityProviderClient;
   private clientId: string;
