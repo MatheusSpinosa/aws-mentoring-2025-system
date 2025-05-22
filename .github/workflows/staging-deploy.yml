@@ -40,6 +40,10 @@ jobs:
       - name: 📦 Install dependencies
         run: yarn
 
+      - name: 📝 Configure .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" >> .env
+
       - name: 🏭 Build project
         run: yarn build
 
