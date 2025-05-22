@@ -1,0 +1,74 @@
+name: CD-STAGING
+on:
+  push: 
+    branches: 
+      - 'main'
+
+jobs:
+  deploy-staging:
+    name: Deploy app to AWS Staging Machine
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏗 Set up repository
+        uses: actions/checkout@v3
+
+      - name: 🔑 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_STAGING_REGION }}
+
+      - name: 🌍 Get Runner's Public IP
+        id: get_ip
+        run: |
+          echo "::set-output name=PUBLIC_IP::$(curl -s https://checkip.amazonaws.com)"
+
+      - name: 🛡 Add IP to Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.AWS_SG_ID_STAGING }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.get_ip.outputs.PUBLIC_IP }}/32"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_STAGING_REGION }}
+
+      - name: 📦 Install dependencies
+        run: yarn
+
+      - name: 🏭 Build project
+        run: yarn build
+
+      - name: 🏗 Create deploy trigger script
+        run: |
+          echo 'run' > rundeploy.txt
+          chmod +x rundeploy.txt
+
+      - name: 🔍 Find dist directory
+        run: ls
+
+      - name: 🖥️ AWS Staging Deployment
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
+          ARGS: '-rlgoDzvc --delete'
+          SOURCE: './dist package.json rundeploy.txt .env'
+          REMOTE_HOST: ${{secrets.AWS_SYSTEM_STAGING_HOST}}
+          REMOTE_USER: ${{secrets.AWS_SYSTEM_STAGING_USER}}
+          TARGET: '${{secrets.AWS_SYSTEM_STAGING_TARGET}}'
+          EXCLUDE: '/node_modules/'
+
+      - name: Revoke Runner IP from Security Group
+        if: always()
+        env:
+          SECURITY_GROUP_ID: ${{ secrets.AWS_SG_ID_STAGING }}
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id $SECURITY_GROUP_ID \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.get_ip.outputs.PUBLIC_IP }}/32"
