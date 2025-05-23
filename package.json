@@ -11,6 +11,7 @@
     "fix": "prettier --write .",
     "migration:create": "ts-node scripts/createMigration.ts",
     "migration:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d src/shared/infra/typeorm/index.ts",
+    "migration:run:prod": "ts-node ./node_modules/typeorm/cli.js migration:run -d dist/shared/infra/typeorm/index.js",
     "migration:revert": "ts-node ./node_modules/typeorm/cli.js migration:revert -d src/shared/infra/typeorm/index.ts",
     "migration:show": "ts-node ./node_modules/typeorm/cli.js migration:show -d src/shared/infra/typeorm/index.ts"
   },
