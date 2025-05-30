@@ -32,16 +32,14 @@ class CreateAuctionUseCase {
       "image/jpeg": "jpg",
       "image/png": "png",
     };
-    console.log("AQUI1");
+
     // --- Check mime type and save file --- //
     const file = await SaveFile({
       file: image,
-      pathFolders: ["tmp", "auctions"],
       acceptMimeTypes,
-      sizes: [{ maxSize: 600, prefix: "" }],
       preString: ``,
     });
-    console.log("AQUI2");
+
     const auction = await this.auctionRepository.create({
       counter,
       customer,
@@ -53,7 +51,7 @@ class CreateAuctionUseCase {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    console.log("AQUI3");
+
     await SocketService.updateAuctionsStart(false);
 
     return auction;

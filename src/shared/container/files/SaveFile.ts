@@ -1,38 +1,30 @@
 /* eslint-disable prefer-regex-literals */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import crypto from "crypto";
-import fs from "fs";
-import { resolve } from "path";
 
 import { AppError } from "@errors/AppError";
 import { S3Provider } from "@shared/container/providers/S3Provider/implementations/S3Provider";
 
 import { GetMimeType } from "./GetMimeType";
-import { ResizeFile } from "./ResizeFile";
 
 export interface ISaveFilesProps {
   file: string;
   acceptMimeTypes: any;
   preString?: string;
-  pathFolders: string[];
   manualFileHash?: string;
-  sizes?: { prefix: string; maxSize: number }[];
 }
 
 export async function SaveFile({
   file,
   acceptMimeTypes,
   preString,
-  pathFolders,
   manualFileHash,
-  sizes,
 }: ISaveFilesProps): Promise<string> {
   // --- Check if have image --- //
 
   if (!file) {
     throw new AppError("{name} is not valid", 400, "GENX003", { name: "file" });
   }
-  let fileName = "";
 
   const base64Image = file;
 
@@ -78,51 +70,18 @@ export async function SaveFile({
 
   const name = `file-${preString}${fileHash}.${findMimeType}`;
   // --- Resize images --- //
-  const resize = await ResizeFile({
-    base64: formatBase64,
-    fileName: name,
-    sizes: sizes || [
-      { prefix: "lg_", maxSize: 1200 },
-      { prefix: "md_", maxSize: 800 },
-      { prefix: "", maxSize: 300 },
-    ],
-  });
-
   // --- Save on bucket --- //
-  if (process.env.AWS_BUCKET) {
-    const s3 = new S3Provider();
-
-    const promises = resize.map((rFile) => {
-      return s3.saveFile({
-        Bucket: process.env.AWS_BUCKET,
-        Body: rFile.buffer,
-        Key: `${
-          pathFolders.length > 0 ? `${pathFolders.join("/")}/` : ""
-        }${rFile.name}`,
-      });
-    });
-
-    await Promise.all(promises);
-  } else {
-    // --- Save on local --- //
-    resize.forEach((rFile) => {
-      const dir = resolve(...pathFolders);
-
-      const path = resolve(...pathFolders, `${rFile.name}`);
-
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      fs.writeFile(
-        path,
-        rFile.buffer.toString("base64"),
-        { encoding: "base64" },
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        () => {},
-      );
-    });
+  if (!process.env.AWS_BUCKET) {
+    throw new AppError("AWS_BUCKET is not defined", 500, "FILEX001");
   }
 
-  fileName = name;
-  return fileName;
+  const s3 = new S3Provider();
+
+  await s3.saveFile({
+    Bucket: process.env.AWS_BUCKET,
+    Body: bufferFile,
+    Key: `${name}`,
+  });
+
+  return name;
 }
