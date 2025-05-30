@@ -20,7 +20,7 @@ class CreateCustomerUseCase {
     let { username, password, email } = data;
 
     username = username.toLowerCase();
-    email = username.toLowerCase();
+    email = email.toLowerCase().trim();
 
     try {
       const result = await this.awsCognitoProvider.signUp(

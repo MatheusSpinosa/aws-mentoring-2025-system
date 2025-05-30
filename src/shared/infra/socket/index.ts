@@ -229,7 +229,6 @@ export class SocketService {
 
       // --- Send bet --- //
       socket.on(EVENTS.SEND_BET, async (data: ISendBetDTO) => {
-        console.log("SEND_BET", data, socket.id);
         if (!data?.auction || typeof data?.auction != "number") {
           this.notify(socket.id, {
             type: "error",
@@ -241,7 +240,6 @@ export class SocketService {
         }
 
         const customer = SocketService.customerAuth[socket.id];
-        console.log("CUSTOMER", customer);
         if (!customer) {
           this.notify(socket.id, {
             type: "error",
@@ -264,7 +262,6 @@ export class SocketService {
 
         // --- Compare auction time with current time --- //
         const auction = SocketService.activeAuctions[data.auction];
-        console.log("AUCTION", auction);
         if (!auction || auction.status != "a") {
           this.notify(socket.id, {
             type: "error",
@@ -278,20 +275,20 @@ export class SocketService {
         const currentTime = Date.now();
         const startTime = new Date(auction.startDate).getTime();
         const auctionStartTime = startTime + auction.counter * 1000;
-        // if (auction.last_bet_createdAt && auctionStartTime < currentTime) {
-        //   const lastBetTime = new Date(auction.last_bet_createdAt).getTime();
-        //   const auctionEndTime = lastBetTime + auction.counter * 1000;
+        if (auction.last_bet_createdAt && auctionStartTime < currentTime) {
+          const lastBetTime = new Date(auction.last_bet_createdAt).getTime();
+          const auctionEndTime = lastBetTime + auction.counter * 1000;
 
-        //   if (auctionEndTime < currentTime) {
-        //     this.notify(socket.id, {
-        //       type: "error",
-        //       data: {
-        //         message: "Auction has already ended",
-        //       },
-        //     });
-        //     return;
-        //   }
-        // }
+          if (auctionEndTime < currentTime) {
+            this.notify(socket.id, {
+              type: "error",
+              data: {
+                message: "Auction has already ended",
+              },
+            });
+            return;
+          }
+        }
 
         // --- Send action bet --- //
         try {
@@ -332,16 +329,16 @@ export class SocketService {
           const { counter } = SocketService.activeAuctions[data.auction];
           SocketService.activeAuctions[data.auction].timer = setTimeout(
             async () => {
-              // await SocketService.auctionRepository.updateAuctionWinner(
-              //   data.auction,
-              //   customer.id,
-              // );
-              // SocketService.activeAuctions[data.auction] = {
-              //   ...SocketService.activeAuctions[data.auction],
-              //   winner: customer.id,
-              //   status: "e",
-              //   endDate: new Date(),
-              // };
+              await SocketService.auctionRepository.updateAuctionWinner(
+                data.auction,
+                customer.id,
+              );
+              SocketService.activeAuctions[data.auction] = {
+                ...SocketService.activeAuctions[data.auction],
+                winner: customer.id,
+                status: "e",
+                endDate: new Date(),
+              };
               console.log("AUCTION END");
               SocketService.io.emit(
                 `_${auction.id}_`,
