@@ -8,6 +8,7 @@ const router = Router();
 
 router.use("/auction", auctionRoutes);
 router.use("/coupon", couponRoutes);
+router.use("/coupons", couponRoutes);
 router.use("/customer", customerRoutes);
 
 export { router };
