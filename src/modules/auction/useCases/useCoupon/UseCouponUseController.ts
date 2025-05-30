@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+import { BetCashRepository } from "@modules/auction/infra/repositories/BetCashRepository";
 import { CouponRepository } from "@modules/auction/infra/repositories/CouponRepository";
 import { CouponUseRepository } from "@modules/auction/infra/repositories/CouponUseRepository";
 
@@ -13,6 +14,7 @@ class UseCouponUseController {
     const useCase = new UseCouponUseCase(
       new CouponRepository(),
       new CouponUseRepository(),
+      new BetCashRepository(),
     );
     const result = await useCase.execute({
       customer: id,

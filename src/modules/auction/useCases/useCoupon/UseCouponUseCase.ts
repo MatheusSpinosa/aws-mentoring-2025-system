@@ -1,4 +1,5 @@
 import { AppError } from "@errors/AppError";
+import type { BetCashRepository } from "@modules/auction/infra/repositories/BetCashRepository";
 import type { CouponRepository } from "@modules/auction/infra/repositories/CouponRepository";
 import type { CouponUseRepository } from "@modules/auction/infra/repositories/CouponUseRepository";
 
@@ -11,6 +12,7 @@ class UseCouponUseCase {
   constructor(
     private couponRepository: CouponRepository,
     private couponUseRepository: CouponUseRepository,
+    private betCashRepository: BetCashRepository,
   ) {}
 
   async execute({ code, customer }: IRequest): Promise<void> {
@@ -39,6 +41,13 @@ class UseCouponUseCase {
     await this.couponUseRepository.create({
       coupon: coupon.id,
       customer,
+      createdAt: new Date(),
+    });
+
+    await this.betCashRepository.create({
+      customer,
+      amount: coupon.bets,
+      type: "c",
       createdAt: new Date(),
     });
   }
