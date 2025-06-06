@@ -75,7 +75,7 @@ export class SocketService {
         },
       });
 
-      SocketService._interceptEmits();
+      // SocketService._interceptEmits();
       SocketService._socketRoutes();
       SocketService.cognitoVerifier = CognitoJwtVerifier.create({
         userPoolId: process.env.COGNITO_POOL_ID,
@@ -111,7 +111,6 @@ export class SocketService {
       }
       const result =
         await SocketService.auctionRepository.getAuctionsAndLastBets();
-      console.log("UPDATE AUCTIONS", result);
       result.forEach((auction) => {
         const { id } = auction;
         auction.total_bets = Number(auction.total_bets || 0);
@@ -127,56 +126,81 @@ export class SocketService {
     }
   }
 
-  private static _interceptEmits() {
-    type EmitFunction = (event: string, ...args: any[]) => boolean;
+  // private static _interceptEmits() {
+  //   type EmitFunction = (event: string, ...args: any[]) => boolean;
+  //   const EMIT_PATCHED = Symbol.for("__emit_patched__");
 
-    const addTimestampToEmit = (emitFunction: EmitFunction) => {
-      return function (this: any, event: string, ...args: any[]) {
-        const timestamp = new Date().toISOString();
-        const time = new Date().getTime();
-        const enhancedArgs = [...args, { timestamp, time }];
+  //   const addTimestampToEmit = (emitFunction: EmitFunction) => {
+  //     return function (this: any, event: string, ...args: any[]) {
+  //       const timestamp = new Date().toISOString();
+  //       const time = new Date().getTime();
+  //       const enhancedArgs = [...args, { timestamp, time }];
+  //       return emitFunction.apply(this, [event, ...enhancedArgs]);
+  //     };
+  //   };
 
-        return emitFunction.apply(this, [event, ...enhancedArgs]);
-      };
-    };
+  //   SocketService.io.on(EVENTS.CONNECTION, (socket: Socket) => {
+  //     if (!(socket as any)[EMIT_PATCHED]) {
+  //       socket.emit = addTimestampToEmit(
+  //         socket.emit.bind(socket),
+  //       ) as EmitFunction;
+  //       (socket as any)[EMIT_PATCHED] = true;
+  //     }
+  //     if (!(socket.broadcast as any)[EMIT_PATCHED]) {
+  //       socket.broadcast.emit = addTimestampToEmit(
+  //         socket.broadcast.emit.bind(socket.broadcast),
+  //       ) as EmitFunction;
+  //       (socket.broadcast as any)[EMIT_PATCHED] = true;
+  //     }
+  //     if (!(socket.volatile as any)[EMIT_PATCHED]) {
+  //       socket.volatile.emit = addTimestampToEmit(
+  //         socket.volatile.emit.bind(socket.volatile),
+  //       ) as EmitFunction;
+  //       (socket.volatile as any)[EMIT_PATCHED] = true;
+  //     }
+  //   });
 
-    SocketService.io.on(EVENTS.CONNECTION, (socket: Socket) => {
-      socket.emit = addTimestampToEmit(
-        socket.emit.bind(socket),
-      ) as EmitFunction;
-      socket.broadcast.emit = addTimestampToEmit(
-        socket.broadcast.emit.bind(socket.broadcast),
-      ) as EmitFunction;
-      socket.volatile.emit = addTimestampToEmit(
-        socket.volatile.emit.bind(socket.volatile),
-      ) as EmitFunction;
-    });
+  //   if (!(SocketService.io as any)[EMIT_PATCHED]) {
+  //     SocketService.io.emit = addTimestampToEmit(
+  //       SocketService.io.emit.bind(SocketService.io),
+  //     ) as EmitFunction;
+  //     (SocketService.io as any)[EMIT_PATCHED] = true;
+  //   }
 
-    SocketService.io.emit = addTimestampToEmit(
-      SocketService.io.emit.bind(SocketService.io),
-    ) as EmitFunction;
+  //   const originalTo = SocketService.io.to.bind(SocketService.io);
+  //   SocketService.io.to = function (room: string | string[]) {
+  //     const roomObj = originalTo(room);
+  //     if (!(roomObj as any)[EMIT_PATCHED]) {
+  //       roomObj.emit = addTimestampToEmit(
+  //         roomObj.emit.bind(roomObj),
+  //       ) as EmitFunction;
+  //       (roomObj as any)[EMIT_PATCHED] = true;
+  //     }
+  //     return roomObj;
+  //   };
 
-    const originalTo = SocketService.io.to.bind(SocketService.io);
-    SocketService.io.to = function (...args: any[]) {
-      const room = originalTo(args);
-      room.emit = addTimestampToEmit(room.emit.bind(room)) as EmitFunction;
-      return room;
-    };
+  //   const originalIn = SocketService.io.in.bind(SocketService.io);
+  //   SocketService.io.in = function (room: string | string[]) {
+  //     const roomObj = originalIn(room);
+  //     if (!(roomObj as any)[EMIT_PATCHED]) {
+  //       roomObj.emit = addTimestampToEmit(
+  //         roomObj.emit.bind(roomObj),
+  //       ) as EmitFunction;
+  //       (roomObj as any)[EMIT_PATCHED] = true;
+  //     }
+  //     return roomObj;
+  //   };
 
-    const originalIn = SocketService.io.in.bind(SocketService.io);
-    SocketService.io.in = function (...args: any[]) {
-      const room = originalIn(args);
-      room.emit = addTimestampToEmit(room.emit.bind(room)) as EmitFunction;
-      return room;
-    };
-
-    const originalLocalEmit = SocketService.io.local.emit.bind(
-      SocketService.io,
-    );
-    SocketService.io.local.emit = addTimestampToEmit(
-      originalLocalEmit,
-    ) as EmitFunction;
-  }
+  //   const originalLocalEmit = SocketService.io.local.emit.bind(
+  //     SocketService.io.local,
+  //   );
+  //   if (!(SocketService.io.local as any)[EMIT_PATCHED]) {
+  //     SocketService.io.local.emit = addTimestampToEmit(
+  //       originalLocalEmit,
+  //     ) as EmitFunction;
+  //     (SocketService.io.local as any)[EMIT_PATCHED] = true;
+  //   }
+  // }
 
   private static async validateToken(
     token: string,
@@ -288,6 +312,15 @@ export class SocketService {
             });
             return;
           }
+          if (auctionStartTime > currentTime) {
+            this.notify(socket.id, {
+              type: "error",
+              data: {
+                message: "Auction has not started yet",
+              },
+            });
+            return;
+          }
         }
 
         // --- Send action bet --- //
@@ -325,8 +358,47 @@ export class SocketService {
             clearTimeout(oldTimeOut);
           }
 
-          // --- Update timer --- //
-          const { counter } = SocketService.activeAuctions[data.auction];
+          // --- Update timer considering startDate --- //
+          const { counter, startDate } =
+            SocketService.activeAuctions[data.auction];
+          const now = Date.now();
+          const auctionStart = new Date(startDate).getTime();
+          let timeoutDuration = counter * 1000;
+
+          // If auction hasn't started yet, wait until it starts plus counter
+          // console.log("auctionStart", auctionStart);
+          // console.log("now", now, now < auctionStart);
+          // console.log("TIMER", auctionStart - now);
+          if (now < auctionStart) {
+            timeoutDuration = auctionStart - now + counter * 1000;
+            if (SocketService.activeAuctions[data.auction]?.startTimer) {
+              clearTimeout(
+                SocketService.activeAuctions[data.auction]?.startTimer,
+              );
+            }
+            SocketService.activeAuctions[data.auction].startTimer = setTimeout(
+              () => {
+                const ac = { ...SocketService.activeAuctions[data.auction] };
+                delete ac.startTimer;
+                if (ac.timer) {
+                  delete ac.timer;
+                }
+                SocketService.io.emit(`_${data.auction}_`, ac);
+              },
+              auctionStart - now + 1500,
+            );
+          } else {
+            // If auction already started, calculate remaining time
+            const lastBetTime = SocketService.activeAuctions[data.auction]
+              .last_bet_createdAt
+              ? new Date(
+                  SocketService.activeAuctions[data.auction].last_bet_createdAt,
+                ).getTime()
+              : auctionStart;
+            const auctionEndTime = lastBetTime + counter * 1000;
+            timeoutDuration = Math.max(auctionEndTime - now, 0);
+          }
+
           SocketService.activeAuctions[data.auction].timer = setTimeout(
             async () => {
               await SocketService.auctionRepository.updateAuctionWinner(
@@ -339,13 +411,13 @@ export class SocketService {
                 status: "e",
                 endDate: new Date(),
               };
-              console.log("AUCTION END");
+
               SocketService.io.emit(
                 `_${auction.id}_`,
                 SocketService.activeAuctions[data.auction],
               );
             },
-            counter * 1000,
+            timeoutDuration,
           );
           const message = { ...SocketService.activeAuctions[data.auction] };
           delete message.timer;

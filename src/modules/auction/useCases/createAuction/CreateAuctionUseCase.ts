@@ -21,7 +21,6 @@ class CreateAuctionUseCase {
     name,
     startDate,
   }: IRequest): Promise<Auction> {
-    console.log(customer, counter, image.slice(0, 50), name, startDate);
     if (!customer || !counter || !image || !name || !startDate) {
       throw new Error("Missing required fields");
     }

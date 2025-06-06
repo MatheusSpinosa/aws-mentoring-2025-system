@@ -6,8 +6,8 @@ import { CreateAuctionUseCase } from "./CreateAuctionUseCase";
 
 class CreateAuctionUseController {
   async handle(request: Request, response: Response): Promise<Response> {
-    const { counter, startDate, name, image } = request.body;
-    console.log("AQUI11111");
+    const { startDate, name, image } = request.body;
+
     const { id } = request.customer;
     const useCase = new CreateAuctionUseCase(new AuctionRepository());
     const result = await useCase.execute({
